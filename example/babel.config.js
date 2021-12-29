@@ -13,5 +13,9 @@ module.exports = {
         },
       },
     ],
+
+    ['../plugins/style.js'],
   ],
 };
+
+console.log('[BabelConfig.]', path.resolve('../plugins/style.js'));

@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { memo, useRef, useState } from 'react';
+import { memo, useState } from 'react';
 
 import {
   Button,
@@ -9,16 +9,12 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import { useInlineStyl } from 'react-native-react-styl';
 
 const T: React.FC<{ style: StyleProp<ViewStyle> }> = memo((props) => {
-  const f = useRef();
-  const styl = useInlineStyl<'t2'>();
-  console.log('[App.T]', 'render', props.style, f.current === styl);
+  console.log('[App.T]', 'render', props.style);
   return (
     <View>
       <Text style={props.style}>T1</Text>
-      <T2 style={styl('t2', { color: 'purple' })} />
     </View>
   );
 });
@@ -29,15 +25,13 @@ const T2: React.FC<{ style: StyleProp<ViewStyle> }> = memo((props) => {
 });
 
 export default function App() {
-  const styl = useInlineStyl();
   const [render, setRender] = useState(0);
   const [color, setColor] = useState('green');
-  console.log('[App.App]', 'render');
 
   return (
     <View style={styles.container}>
-      {render > 2 && <T style={styl('post', [styles.box, { color }])} />}
-      <Text>{render}</Text>
+      {render > 2 && <T style={[styles.box, styles.box]} />}
+
       <Button
         title={'Render'}
         onPress={() => {
