@@ -37,11 +37,23 @@ function objectEquals(v1: any, v2: any) {
   }
 }
 
-export const styl = (style: Style) => {
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const prevStyle = useRef<Style | undefined>();
-  if (!prevStyle.current || !objectEquals(prevStyle.current, style)) {
-    prevStyle.current = style;
+export function useInlineStyl<Keys extends string>() {
+  const inlineStyles = useRef<Map<Keys, Style>>();
+  const stylF = useRef<(key: Keys, style: Style) => Style>();
+  if (!inlineStyles.current) {
+    inlineStyles.current = new Map<Keys, Style>();
   }
-  return prevStyle.current;
-};
+
+  if (!stylF.current) {
+    stylF.current = (key: Keys, style: Style) => {
+      if (!inlineStyles.current) return style;
+      const prevStyle = inlineStyles.current.get(key);
+      if (!prevStyle || !objectEquals(prevStyle, style)) {
+        inlineStyles.current.set(key, style);
+      }
+      return inlineStyles.current.get(key);
+    };
+  }
+
+  return stylF.current!;
+}
