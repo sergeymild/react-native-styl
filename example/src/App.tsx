@@ -9,6 +9,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
+import { Header } from './Header';
 
 const T: React.FC<{ style: StyleProp<ViewStyle> }> = memo((props) => {
   console.log('[App.T]', 'render', props.style);
@@ -24,13 +25,27 @@ const T2: React.FC<{ style: StyleProp<ViewStyle> }> = memo((props) => {
   return <Text style={props.style}>t2</Text>;
 });
 
+const backResponse: string = undefined;
+
+function someFunc(title: string) {
+  if (typeof title !== 'string') {
+  }
+}
+
+someFunc(backResponse);
+
 export default function App() {
   const [render, setRender] = useState(0);
   const [color, setColor] = useState('green');
 
+  const headerStyle = { backgroundColor: 'green' };
+
   return (
     <View style={styles.container}>
       {render > 2 && <T style={[styles.box, styles.box]} />}
+      {render > 2 && <T style={[styles.box, styles.box]} />}
+
+      <Header style={headerStyle} />
 
       <Button
         title={'Render'}
