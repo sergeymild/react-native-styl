@@ -15,24 +15,31 @@ function shouldAddImport(root) {
 
 function addImportUseInlineStyl(root, t) {
   if (shouldAddImport(root)) {
-    const useInlineStyl = t.ImportDefaultSpecifier(
-      t.identifier('cacheInlineStyl')
-    );
-    const imp = t.importDeclaration(
-      [useInlineStyl],
-      t.stringLiteral('react-native-styl')
-    );
-    root.unshiftContainer('body', imp);
+    // const useInlineStyl = t.ImportDefaultSpecifier(
+    //   t.identifier('cacheInlineStyl')
+    // );
+    // const imp = t.importDeclaration(
+    //   [useInlineStyl],
+    //   t.stringLiteral('react-native-styl')
+    // );
+    // root.unshiftContainer('body', imp);
   }
 }
 
 function addUseInlineStyl(path, root, t, isClassMethod) {
-  if (!path.scope.hasBinding('styl')) {
+  let scope = path.scope;
+  if (!isClassMethod) {
+    while (scope.parent && scope.parent.block.type !== 'Program') {
+      scope = scope.parent;
+    }
+  }
+
+  if (!scope.hasBinding('styl')) {
     addImportUseInlineStyl(root, t);
     let ident = t.identifier('cacheInlineStyl.useInlineStyl');
     if (isClassMethod)
       ident = t.identifier('cacheInlineStyl.useClassInlineStyl');
-    path.scope.push({
+    scope.push({
       id: t.identifier('styl'),
       init: t.callExpression(ident, []),
     });
@@ -54,6 +61,21 @@ function shouldSkip(path) {
   return comments && comments.find((c) => c.value.includes('styl:disable'));
 }
 
+const characters =
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+const charactersLength = characters.length;
+function makeId(length) {
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += characters.charAt(Math.floor(Math.random() * charactersLength));
+  }
+  return result;
+}
+function randomId(path) {
+  //p.scope.generateUid()
+  return 'temp_' + makeId(40);
+}
+
 module.exports = function (babel) {
   const { types: t } = babel;
 
@@ -73,7 +95,7 @@ module.exports = function (babel) {
         path.traverse({
           ArrayExpression(p) {
             if (p.parent.type !== 'JSXExpressionContainer') return;
-            const id = path.scope.generateUid();
+            const id = randomId(path);
             isAddImport = true;
             p.replaceWith(
               t.callExpression(t.identifier('styl'), [
@@ -87,7 +109,7 @@ module.exports = function (babel) {
             if (p.parent.type !== 'JSXExpressionContainer') return;
             if (!p.scope.bindings[p.node.name]) return;
             if (!isCallExpression(p)) return;
-            const id = p.scope.generateUid();
+            const id = randomId(p);
             isAddImport = true;
             p.replaceWith(
               t.callExpression(t.identifier('styl'), [
@@ -99,7 +121,7 @@ module.exports = function (babel) {
 
           ObjectExpression(p) {
             if (p.parent.type !== 'JSXExpressionContainer') return;
-            const id = path.scope.generateUid();
+            const id = randomId(p);
             isAddImport = true;
             p.replaceWith(
               t.callExpression(t.identifier('styl'), [

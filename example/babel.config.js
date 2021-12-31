@@ -4,6 +4,7 @@ const pak = require('../package.json');
 module.exports = {
   presets: ['module:metro-react-native-babel-preset'],
   plugins: [
+    ['../plugins/style.js'],
     [
       'module-resolver',
       {
@@ -13,8 +14,6 @@ module.exports = {
         },
       },
     ],
-
-    ['../plugins/style.js'],
   ],
 };
 
