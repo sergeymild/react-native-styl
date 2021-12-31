@@ -9,33 +9,49 @@ function shouldAddImport(root) {
   return (
     root.scope.block.body
       .filter((n) => n.type === 'ImportDeclaration')
-      .find((n) => n.source.value === 'react-native-react-styl') === undefined
+      .find((n) => n.source.value === 'react-native-styl') === undefined
   );
 }
 
 function addImportUseInlineStyl(root, t) {
   if (shouldAddImport(root)) {
-    const useInlineStyl = t.importSpecifier(
-      t.identifier('useInlineStyl'),
-      t.identifier('useInlineStyl')
+    const useInlineStyl = t.ImportDefaultSpecifier(
+      t.identifier('cacheInlineStyl')
     );
     const imp = t.importDeclaration(
       [useInlineStyl],
-      t.stringLiteral('react-native-react-styl')
+      t.stringLiteral('react-native-styl')
     );
     root.unshiftContainer('body', imp);
   }
 }
 
-function addUseInlineStyl(path, root, t) {
+function addUseInlineStyl(path, root, t, isClassMethod) {
   if (!path.scope.hasBinding('styl')) {
     addImportUseInlineStyl(root, t);
-
+    let ident = t.identifier('cacheInlineStyl.useInlineStyl');
+    if (isClassMethod)
+      ident = t.identifier('cacheInlineStyl.useClassInlineStyl');
     path.scope.push({
       id: t.identifier('styl'),
-      init: t.callExpression(t.identifier('useInlineStyl'), []),
+      init: t.callExpression(ident, []),
     });
   }
+}
+
+function isCallExpression(path) {
+  const binding = path.scope.bindings[path.node.name];
+  if (!binding) return false;
+  if (!binding.path) return false;
+  if (!binding.path.node) return false;
+  if (!binding.path.node.init) return false;
+  if (!binding.path.node.init.type) return false;
+  return binding.path.node.init.type === 'CallExpression';
+}
+
+function shouldSkip(path) {
+  const comments = path.node.leadingComments;
+  return comments && comments.find((c) => c.value.includes('styl:disable'));
 }
 
 module.exports = function (babel) {
@@ -45,70 +61,56 @@ module.exports = function (babel) {
   return {
     visitor: {
       Program(path) {
-        console.log('start program', path);
         root = path;
       },
 
       JSXAttribute(path) {
-        if (isSupportedStyleAttribute(path.node)) {
-          if (
-            path.node.leadingComments &&
-            path.node.leadingComments.find((c) =>
-              c.value.includes('styl:disable')
-            )
-          ) {
-            return;
-          }
+        if (!isSupportedStyleAttribute(path.node)) return;
+        if (shouldSkip(path)) return;
+        let isAddImport = false;
+        let isClassMethod = path.scope.block.type === 'ClassMethod';
 
-          addUseInlineStyl(path, root, t);
+        path.traverse({
+          ArrayExpression(p) {
+            if (p.parent.type !== 'JSXExpressionContainer') return;
+            const id = path.scope.generateUid();
+            isAddImport = true;
+            p.replaceWith(
+              t.callExpression(t.identifier('styl'), [
+                t.stringLiteral(id),
+                t.arrayExpression(p.node.elements),
+              ])
+            );
+          },
 
-          path.traverse({
-            ArrayExpression(p) {
-              if (p.parent.type === 'JSXExpressionContainer') {
-                const id = path.scope.generateUid();
-                console.log(path.scope.generateUid());
-                p.replaceWith(
-                  t.callExpression(t.identifier('styl'), [
-                    t.stringLiteral(id),
-                    t.arrayExpression(p.node.elements),
-                  ])
-                );
-                path.skip();
-              }
-            },
+          Identifier(p) {
+            if (p.parent.type !== 'JSXExpressionContainer') return;
+            if (!p.scope.bindings[p.node.name]) return;
+            if (!isCallExpression(p)) return;
+            const id = p.scope.generateUid();
+            isAddImport = true;
+            p.replaceWith(
+              t.callExpression(t.identifier('styl'), [
+                t.stringLiteral(id),
+                p.node,
+              ])
+            );
+          },
 
-            Identifier(p) {
-              if (p.parent.type === 'JSXExpressionContainer') {
-                if (p.scope.bindings[p.node.name]) {
-                  if (
-                    p.scope.bindings[p.node.name].path.node.init.type !==
-                    'CallExpression'
-                  ) {
-                    const id = p.scope.generateUid();
-                    p.replaceWith(
-                      t.callExpression(t.identifier('styl'), [
-                        t.stringLiteral(id),
-                        p.node,
-                      ])
-                    );
-                  }
-                }
-              }
-            },
+          ObjectExpression(p) {
+            if (p.parent.type !== 'JSXExpressionContainer') return;
+            const id = path.scope.generateUid();
+            isAddImport = true;
+            p.replaceWith(
+              t.callExpression(t.identifier('styl'), [
+                t.stringLiteral(id),
+                p.node,
+              ])
+            );
+          },
+        });
 
-            ObjectExpression(p) {
-              if (p.parent.type === 'JSXExpressionContainer') {
-                const id = path.scope.generateUid();
-                p.replaceWith(
-                  t.callExpression(t.identifier('styl'), [
-                    t.stringLiteral(id),
-                    p.node,
-                  ])
-                );
-              }
-            },
-          });
-        }
+        addUseInlineStyl(path, root, t, isClassMethod);
       },
     },
   };

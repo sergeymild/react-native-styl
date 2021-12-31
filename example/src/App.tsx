@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { memo, useState } from 'react';
-
+import cacheInlineStyl from 'react-native-react-styl';
 import {
   Button,
   StyleProp,

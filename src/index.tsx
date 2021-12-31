@@ -37,7 +37,7 @@ function objectEquals(v1: any, v2: any) {
   }
 }
 
-export function useInlineStyl<Keys extends string>() {
+function useInlineStyl<Keys extends string>() {
   const inlineStyles = useRef<Map<Keys, Style>>();
   const stylF = useRef<(key: Keys, style: Style) => Style>();
   if (!inlineStyles.current) {
@@ -57,3 +57,13 @@ export function useInlineStyl<Keys extends string>() {
 
   return stylF.current!;
 }
+
+function useClassInlineStyl<Keys extends string>() {
+  const fn = (key: Keys, style: Style) => {
+    return style;
+  };
+
+  return fn;
+}
+
+export default { useInlineStyl, useClassInlineStyl };
