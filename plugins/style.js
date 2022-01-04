@@ -1,3 +1,14 @@
+function isStyleImport(isClassMethod) {
+  return function (n) {
+    const { source } = n;
+    const { specifiers } = source;
+    const sName =
+      specifiers && specifiers.length > 0 && specifiers[0].local.name;
+    const localName = isClassMethod ? 'useClassInlineStyl' : 'cacheInlineStyl';
+    return source.value === 'react-native-react-styl' && sName === localName;
+  };
+}
+
 function isSupportedStyleAttribute(node) {
   return (
     node.name.name === 'style' &&
@@ -5,40 +16,46 @@ function isSupportedStyleAttribute(node) {
   );
 }
 
-function shouldAddImport(root) {
+function shouldAddImport(root, isClassMethod) {
   return (
     root.scope.block.body
       .filter((n) => n.type === 'ImportDeclaration')
-      .find((n) => n.source.value === 'react-native-styl') === undefined
+      .find(isStyleImport(isClassMethod)) === undefined
   );
 }
 
-function addImportUseInlineStyl(root, t) {
-  if (shouldAddImport(root)) {
-    // const useInlineStyl = t.ImportDefaultSpecifier(
-    //   t.identifier('cacheInlineStyl')
-    // );
-    // const imp = t.importDeclaration(
-    //   [useInlineStyl],
-    //   t.stringLiteral('react-native-styl')
-    // );
-    // root.unshiftContainer('body', imp);
+function addImportUseInlineStyl(root, t, isClassMethod) {
+  if (!shouldAddImport(root, isClassMethod)) return;
+  const useInlineStyl = t.importSpecifier(
+    t.identifier(isClassMethod ? 'useClassInlineStyl' : 'useInlineStyl'),
+    t.identifier(isClassMethod ? 'useClassInlineStyl' : 'useInlineStyl')
+  );
+  const imp = t.importDeclaration(
+    [useInlineStyl],
+    t.stringLiteral('react-native-react-styl')
+  );
+  root.unshiftContainer('body', imp);
+}
+
+function rootScope(path) {
+  let scope = path.scope;
+  if (!scope) return path;
+  while (scope.parent && scope.parent.block.type !== 'Program') {
+    scope = scope.parent;
   }
+  return scope;
 }
 
 function addUseInlineStyl(path, root, t, isClassMethod) {
   let scope = path.scope;
   if (!isClassMethod) {
-    while (scope.parent && scope.parent.block.type !== 'Program') {
-      scope = scope.parent;
-    }
+    scope = rootScope(path);
   }
 
   if (!scope.hasBinding('styl')) {
-    addImportUseInlineStyl(root, t);
-    let ident = t.identifier('cacheInlineStyl.useInlineStyl');
-    if (isClassMethod)
-      ident = t.identifier('cacheInlineStyl.useClassInlineStyl');
+    addImportUseInlineStyl(root, t, isClassMethod);
+    let ident = t.identifier('useInlineStyl');
+    if (isClassMethod) ident = t.identifier('useClassInlineStyl');
     scope.push({
       id: t.identifier('styl'),
       init: t.callExpression(ident, []),
@@ -47,7 +64,7 @@ function addUseInlineStyl(path, root, t, isClassMethod) {
 }
 
 function isCallExpression(path) {
-  const binding = path.scope.bindings[path.node.name];
+  const binding = rootScope(path).bindings[path.node.name];
   if (!binding) return false;
   if (!binding.path) return false;
   if (!binding.path.node) return false;
@@ -61,19 +78,27 @@ function shouldSkip(path) {
   return comments && comments.find((c) => c.value.includes('styl:disable'));
 }
 
-const characters =
-  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-const charactersLength = characters.length;
-function makeId(length) {
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    result += characters.charAt(Math.floor(Math.random() * charactersLength));
-  }
-  return result;
-}
 function randomId(path) {
-  //p.scope.generateUid()
-  return 'temp_' + makeId(40);
+  return rootScope(path).generateUid();
+}
+
+function isNodeModules(state) {
+  if (!state.file.opts.filename) return false;
+  return state.file.opts.filename.includes('node_modules');
+}
+
+function isReactClass(path) {
+  const scope = rootScope(path);
+  let isClassMethod = scope.block.type === 'ClassDeclaration';
+  if (
+    scope.block.type === 'FunctionExpression' &&
+    scope.block.params.find(
+      (p) => p.type === 'Identifier' && p.name === '_PureComponent'
+    )
+  ) {
+    return true;
+  }
+  return isClassMethod;
 }
 
 module.exports = function (babel) {
@@ -86,11 +111,12 @@ module.exports = function (babel) {
         root = path;
       },
 
-      JSXAttribute(path) {
+      JSXAttribute(path, state) {
+        if (isNodeModules(state)) return;
         if (!isSupportedStyleAttribute(path.node)) return;
         if (shouldSkip(path)) return;
         let isAddImport = false;
-        let isClassMethod = path.scope.block.type === 'ClassMethod';
+        const isClassMethod = isReactClass(path);
 
         path.traverse({
           ArrayExpression(p) {
@@ -107,8 +133,8 @@ module.exports = function (babel) {
 
           Identifier(p) {
             if (p.parent.type !== 'JSXExpressionContainer') return;
-            if (!p.scope.bindings[p.node.name]) return;
-            if (!isCallExpression(p)) return;
+            if (!rootScope(p.scope).hasBinding(p.node.name)) return;
+            if (isCallExpression(p)) return;
             const id = randomId(p);
             isAddImport = true;
             p.replaceWith(
@@ -131,7 +157,6 @@ module.exports = function (babel) {
             );
           },
         });
-
         addUseInlineStyl(path, root, t, isClassMethod);
       },
     },

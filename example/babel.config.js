@@ -16,5 +16,3 @@ module.exports = {
     ],
   ],
 };
-
-console.log('[BabelConfig.]', path.resolve('../plugins/style.js'));

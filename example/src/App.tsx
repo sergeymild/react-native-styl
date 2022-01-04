@@ -1,6 +1,5 @@
 import * as React from 'react';
-import { memo, useState } from 'react';
-import cacheInlineStyl from 'react-native-react-styl';
+import { memo, PureComponent, useState } from 'react';
 import {
   Button,
   StyleProp,
@@ -16,6 +15,7 @@ const T: React.FC<{ style: StyleProp<ViewStyle> }> = memo((props) => {
   return (
     <View>
       <Text style={props.style}>T1</Text>
+      <T2 style={{ backgroundColor: 'purple' }} />
     </View>
   );
 });
@@ -25,14 +25,12 @@ const T2: React.FC<{ style: StyleProp<ViewStyle> }> = memo((props) => {
   return <Text style={props.style}>t2</Text>;
 });
 
-const backResponse: string = undefined;
-
-function someFunc(title: string) {
-  if (typeof title !== 'string') {
+class Com extends PureComponent {
+  render() {
+    console.log('[Com.render]');
+    return <View style={this.props.style} />;
   }
 }
-
-someFunc(backResponse);
 
 export default function App() {
   const [render, setRender] = useState(0);
@@ -44,6 +42,7 @@ export default function App() {
     <View style={styles.container}>
       {render > 2 && <T style={[styles.box, styles.box]} />}
       {render > 2 && <T style={[styles.box, styles.box]} />}
+      <Com style={{ backgroundColor: 'red', width: 100, height: 200 }} />
 
       <Header style={headerStyle} />
 

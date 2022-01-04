@@ -59,11 +59,25 @@ function useInlineStyl<Keys extends string>() {
 }
 
 function useClassInlineStyl<Keys extends string>() {
-  const fn = (key: Keys, style: Style) => {
-    return style;
-  };
+  //@ts-ignore
+  let inlineStyles = this._inlineStyles;
+  //@ts-ignore
+  let stylF = this._stylF;
+  if (!inlineStyles) {
+    inlineStyles = new Map<Keys, Style>();
+  }
 
-  return fn;
+  if (!stylF) {
+    stylF = (key: Keys, style: Style) => {
+      if (!inlineStyles) return style;
+      const prevStyle = inlineStyles.get(key);
+      if (!prevStyle || !objectEquals(prevStyle, style)) {
+        inlineStyles.set(key, style);
+      }
+      return inlineStyles.get(key);
+    };
+  }
+  return stylF;
 }
 
-export default { useInlineStyl, useClassInlineStyl };
+export { useInlineStyl, useClassInlineStyl };

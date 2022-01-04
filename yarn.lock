@@ -1916,6 +1916,11 @@ babel-jest@^26.6.3:
     graceful-fs "^4.2.4"
     slash "^3.0.0"
 
+babel-plugin-console-source@^2.0.5:
+  version "2.0.5"
+  resolved "https://registry.yarnpkg.com/babel-plugin-console-source/-/babel-plugin-console-source-2.0.5.tgz#850f2753e2246b4f051ea05049160436c39c8351"
+  integrity sha512-yzQpv5ur9IeSH8EuFdDogGYR19u69Ez7cYolOde3jiyZlpy04Vn5HzCyOshylXACjLzWZIFi4RZa7ZYQxADJIg==
+
 babel-plugin-dynamic-import-node@^2.3.3:
   version "2.3.3"
   resolved "https://registry.yarnpkg.com/babel-plugin-dynamic-import-node/-/babel-plugin-dynamic-import-node-2.3.3.tgz#84fda19c976ec5c6defef57f9427b3def66e17a3"
